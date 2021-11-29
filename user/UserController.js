@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const User = require("./User");
 const bcrypt = require("bcryptjs");
-const adminAuth = require("../middlewares/adminAuth")
+const adminAuth = require("../middlewares/adminAuth");
+const { redirect } = require("express/lib/response");
 
 
 //Select 
@@ -55,6 +56,7 @@ router.get("/login", (req, res) => {
     res.render("admin/users/login.ejs")
 });
 
+///Login com autenticação e session
 router.post("/authenticate", (req, res) => {
     var email = req.body.email;
     var password = req.body.password;
@@ -88,5 +90,61 @@ router.post("/authenticate", (req, res) => {
         req.session.user = undefined;
         res.redirect("/");
     })
+})
+
+
+router.get("/admin/users/edit/:id", adminAuth, (req, res) => {
+    var id = req.params.id;
+    if(isNaN(id)){
+        res.redirect("/admin/users")
+    }
+    User.findByPk(id).then(user => {
+        if(user != undefined) {
+            res.render("admin/users/edit.ejs", {user: user});
+        }else{
+           console.log("erro1")
+        }
+    }).catch(erro => {
+        console.log(erro)
+    })
+})
+
+//Edit de Usuários
+router.post("/users/update", adminAuth, (req, res) => {
+    var id = req.body.id;
+    var name = req.body.name;
+    var email = req.body.email;
+    var password = req.body.password
+
+    var salt = bcrypt.genSaltSync(10);
+    var hash = bcrypt.hashSync(password, salt);
+
+    User.update({name: name, email: email, password: hash}, {
+        where: {
+            id:id
+        }
+    }).then(() => {
+        res.redirect("/admin/users")
+    })
+
+})
+
+router.post("/users/delete",adminAuth, (req, res) => {
+    var id = req.body.id;
+    if(id != undefined) {
+        if(!isNaN(id)){
+            User.destroy({
+                where: {
+                    id:id
+                }
+            }).then(() => {
+                res.redirect("/admin/users")
+            });
+        }else{
+            res.redirect("/admin/users");
+        }
+    }else{
+        res;redirect("/admin/users");
+    }
 })
 module.exports = router;
